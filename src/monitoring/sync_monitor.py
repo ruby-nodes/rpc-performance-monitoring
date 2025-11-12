@@ -23,8 +23,20 @@ except ImportError:
         async def get_client_version(self): 
             class MockResponse:
                 success = False
+                data = None
                 error = "No IPC connection"
-                result = None
+            return MockResponse()
+        async def get_syncing_status(self):
+            class MockResponse:
+                success = False
+                data = None
+                error = "No IPC connection"
+            return MockResponse()
+        async def get_block_number(self):
+            class MockResponse:
+                success = False
+                data = None
+                error = "No IPC connection"
             return MockResponse()
     
     class PrometheusClient:
