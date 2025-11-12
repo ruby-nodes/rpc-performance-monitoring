@@ -1,0 +1,132 @@
+node:
+  # Auto-detect node type and configuration
+  auto_detect: true
+  
+  # Manual override if needed
+  ipc_path: null  # Will auto-detect: /var/lib/bsc/geth.ipc or /tmp/reth.ipc
+  client_type: "auto"  # geth, reth, or auto
+  prometheus_url: "http://localhost:9090"  # Node's Prometheus metrics endpoint
+
+# Network configurations (top-level)
+networks:
+  bsc:
+    name: "BSC Mainnet"
+    chain_id: 56
+    ipc_path: "/var/lib/bsc/geth.ipc"
+    consensus_rpc_url: "https://bsc-dataseed.bnbchain.org/"
+    client_type: "geth"
+    
+  base:
+    name: "Base Mainnet" 
+    chain_id: 8453
+    ipc_path: "/tmp/reth.ipc"
+    consensus_rpc_url: "https://mainnet.base.org"
+    client_type: "reth"
+
+# IPC configuration
+ipc:
+  socket_path: "/var/lib/bsc/geth.ipc"  # Default path
+  connection_timeout_seconds: 10
+
+monitoring:
+  # Sync monitoring intervals
+  sync_check_interval_seconds: 30        # Main sync check interval (seconds)
+  metrics_collection_interval_seconds: 5 # Prometheus metrics collection (seconds)
+  
+  # Desync detection thresholds
+  desync_threshold_blocks: 3             # Blocks behind to consider desync
+  desync_detection_window_seconds: 300   # Window for desync detection (seconds)
+  network_timeout_seconds: 10            # Network request timeout
+  
+  # Legacy parameters (for compatibility)
+  check_interval: 30              # Main sync check interval (seconds)
+  metrics_collection_interval: 5  # Prometheus metrics collection (seconds)
+  desync_threshold: 3             # Blocks behind to consider desync
+  critical_threshold: 10          # Blocks behind for critical alert
+  max_block_age: 60              # Max seconds since last block
+  
+  # Analysis windows
+  correlation_window_minutes: 5   # Window for correlation analysis
+  context_window_minutes: 10      # Context data collection window
+  
+  # Peer monitoring
+  min_peer_count: 5               # Minimum healthy peer count
+  peer_timeout: 30                # Peer response timeout (seconds)
+
+prometheus:
+  # Prometheus scraping configuration
+  scrape_interval: 5              # Metrics collection interval (seconds)
+  timeout: 10                     # Request timeout (seconds)
+  retention_minutes: 1440         # 24 hours of metrics retention
+  
+  # Connection settings
+  max_retries: 3
+  retry_delay: 5
+
+correlation:
+  # Statistical analysis settings
+  window_size: 300                # 5 minutes correlation window (seconds)
+  desync_detection_window: 60     # 1 minute before/after desync
+  min_correlation_threshold: 0.7  # Statistical significance threshold
+  anomaly_sensitivity: 2.0        # Standard deviations for anomaly detection
+
+storage:
+  # Database configuration
+  database_path: "./data/monitoring.db"
+  timeseries_retention_hours: 168  # 1 week
+  
+  # Data retention policies
+  desync_logs_retention_days: 90
+  metrics_retention_days: 30
+  system_logs_retention_days: 7
+
+logging:
+  # Output directory for all logs
+  logs_directory: "./logs"
+  
+  # Log levels
+  system_level: "INFO"
+  desync_level: "DEBUG"
+  metrics_level: "INFO"
+  
+  # Desync event logging
+  desync_logging:
+    enabled: true
+    auto_collect_window_minutes: 10
+    include_full_metrics: true
+    include_peer_details: true
+    include_ipc_diagnostics: true
+    max_log_size_mb: 50
+    
+  # AI optimization
+  ai_optimization:
+    format: "json"                    # json, yaml, structured_text
+    include_analysis_hints: true
+    include_correlation_scores: true
+    include_pattern_matching: true
+    generate_analysis_prompt: true
+    
+  # Output directories
+  log_directory: "./logs"
+  desync_directory: "./logs/desyncs"
+  analysis_directory: "./logs/analysis"
+  metrics_directory: "./logs/metrics"
+
+alerts:
+  # Alert configuration
+  enabled: true
+  webhook_url: null                   # Optional webhook for alerts
+  email_enabled: false
+  
+  # Alert thresholds
+  desync_alert: true
+  correlation_alerts: true
+  anomaly_alerts: true
+  peer_drop_threshold: 0.5            # Alert if peers drop by 50%
+  
+dashboard:
+  # Optional web dashboard
+  enabled: false
+  host: "0.0.0.0"
+  port: 8080
+  update_interval: 5                  # Dashboard update interval (seconds)

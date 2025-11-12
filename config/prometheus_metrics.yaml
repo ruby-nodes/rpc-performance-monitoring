@@ -1,0 +1,247 @@
+# Prometheus Metrics Configuration
+# Defines which metrics to collect and their importance for desync correlation
+
+# Critical metrics most likely to correlate with desyncs
+critical_metrics:
+  - name: "p2p_peers_connected"
+    description: "Number of connected peers"
+    type: "gauge"
+    priority: "high"
+    alert_on_change_percent: 50  # Alert if drops by 50%
+    correlation_weight: 0.9
+    
+  - name: "p2p_peer_traffic_ingress"
+    description: "Incoming network traffic from peers"
+    type: "counter"
+    priority: "high" 
+    unit: "bytes"
+    correlation_weight: 0.8
+    
+  - name: "p2p_peer_traffic_egress"
+    description: "Outgoing network traffic to peers"
+    type: "counter"
+    priority: "high"
+    unit: "bytes"
+    correlation_weight: 0.7
+    
+  - name: "chain_head_block"
+    description: "Current block height"
+    type: "gauge"
+    priority: "critical"
+    is_primary_sync_indicator: true
+    correlation_weight: 1.0
+
+# Chain synchronization metrics
+chain_metrics:
+  - name: "chain_head_header"
+    description: "Current header height"
+    type: "gauge"
+    priority: "high"
+    correlation_weight: 0.9
+    
+  - name: "chain_head_receipt"
+    description: "Receipt processing height"
+    type: "gauge"
+    priority: "medium"
+    correlation_weight: 0.6
+    
+  - name: "chain_reorg_meter"
+    description: "Chain reorganization events"
+    type: "counter"
+    priority: "high"
+    alert_on_increase: true
+    correlation_weight: 0.8
+    
+  - name: "chain_reorg_add"
+    description: "Blocks added during reorganizations"
+    type: "counter"
+    priority: "medium"
+    correlation_weight: 0.7
+    
+  - name: "chain_reorg_drop"
+    description: "Blocks dropped during reorganizations"
+    type: "counter"
+    priority: "medium"
+    correlation_weight: 0.7
+
+# Performance and processing metrics
+performance_metrics:
+  - name: "chain_block_processing_time"
+    description: "Time to process blocks"
+    type: "histogram"
+    priority: "high"
+    unit: "milliseconds"
+    percentiles: [50, 90, 95, 99]
+    alert_on_spike_multiplier: 3.0  # Alert if 3x normal processing time
+    correlation_weight: 0.8
+    
+  - name: "chain_block_validation_time"
+    description: "Block validation duration"
+    type: "histogram"
+    priority: "medium"
+    unit: "milliseconds"
+    percentiles: [50, 90, 95, 99]
+    correlation_weight: 0.6
+    
+  - name: "chain_transaction_processing"
+    description: "Transaction processing rate"
+    type: "counter"
+    priority: "medium"
+    unit: "transactions/second"
+    correlation_weight: 0.5
+
+# Peer network health metrics
+peer_metrics:
+  - name: "p2p_dials_total"
+    description: "Outbound connection attempts"
+    type: "counter"
+    priority: "medium"
+    correlation_weight: 0.6
+    
+  - name: "p2p_serves_total" 
+    description: "Requests served to peers"
+    type: "counter"
+    priority: "low"
+    correlation_weight: 0.4
+    
+  - name: "p2p_peers_disconnected_total"
+    description: "Total peer disconnections"
+    type: "counter"
+    priority: "high"
+    alert_on_spike: true
+    correlation_weight: 0.8
+
+# System resource metrics
+resource_metrics:
+  - name: "system_memory_allocs"
+    description: "Memory allocations"
+    type: "counter"
+    priority: "medium"
+    unit: "bytes"
+    correlation_weight: 0.5
+    
+  - name: "system_memory_frees"
+    description: "Memory deallocations"
+    type: "counter"
+    priority: "medium"
+    unit: "bytes"
+    correlation_weight: 0.4
+    
+  - name: "system_memory_held"
+    description: "Current memory usage"
+    type: "gauge"
+    priority: "high"
+    unit: "bytes"
+    alert_on_spike_multiplier: 2.0  # Alert if 2x normal memory usage
+    correlation_weight: 0.7
+    
+  - name: "system_cpu_goroutines"
+    description: "Active goroutines (geth specific)"
+    type: "gauge"
+    priority: "medium"
+    client_specific: ["geth"]
+    correlation_weight: 0.5
+    
+  - name: "system_disk_read_bytes"
+    description: "Disk read activity"
+    type: "counter"
+    priority: "medium"
+    unit: "bytes"
+    correlation_weight: 0.5
+    
+  - name: "system_disk_write_bytes"
+    description: "Disk write activity"
+    type: "counter"
+    priority: "medium"
+    unit: "bytes"
+    correlation_weight: 0.5
+
+# Database and storage metrics
+storage_metrics:
+  - name: "db_chaindata_compact_time"
+    description: "Database compaction time"
+    type: "histogram"
+    priority: "low"
+    unit: "milliseconds"
+    correlation_weight: 0.3
+    
+  - name: "db_chaindata_disk_size"
+    description: "Database size on disk"
+    type: "gauge"
+    priority: "low"
+    unit: "bytes"
+    correlation_weight: 0.2
+    
+  - name: "db_chaindata_disk_read"
+    description: "Database read operations"
+    type: "counter"
+    priority: "medium"
+    unit: "operations"
+    correlation_weight: 0.4
+    
+  - name: "db_chaindata_disk_write"
+    description: "Database write operations"
+    type: "counter"
+    priority: "medium"
+    unit: "operations"
+    correlation_weight: 0.4
+    
+  - name: "trie_memcache_clean_hit"
+    description: "State trie cache hits"
+    type: "counter"
+    priority: "low"
+    correlation_weight: 0.3
+    
+  - name: "trie_memcache_clean_miss"
+    description: "State trie cache misses"
+    type: "counter"
+    priority: "low"
+    correlation_weight: 0.3
+
+# Anomaly detection patterns
+anomaly_patterns:
+  peer_drop:
+    metric: "p2p_peers_connected"
+    type: "sudden_decrease"
+    threshold: 0.3              # 30% drop
+    timeframe: 60               # within 60 seconds
+    severity: "high"
+    
+  memory_spike:
+    metric: "system_memory_held"
+    type: "sudden_increase"
+    threshold: 2.0              # 2x normal
+    timeframe: 120              # within 2 minutes
+    severity: "medium"
+    
+  processing_delay:
+    metric: "chain_block_processing_time"
+    type: "sustained_increase"
+    threshold: 3.0              # 3x normal processing time
+    timeframe: 180              # for 3 minutes
+    severity: "high"
+    
+  network_congestion:
+    metric: "p2p_peer_traffic_ingress"
+    type: "sudden_decrease"
+    threshold: 0.5              # 50% drop in traffic
+    timeframe: 90               # within 90 seconds
+    severity: "medium"
+    
+  reorg_cascade:
+    metric: "chain_reorg_meter"
+    type: "rapid_increase"
+    threshold: 3                # 3+ reorgs
+    timeframe: 300              # within 5 minutes
+    severity: "high"
+
+# Metric collection configuration
+collection:
+  batch_size: 100               # Metrics per batch
+  max_retries: 3                # Retry failed collections
+  retry_delay: 5                # Seconds between retries
+  timeout: 10                   # Request timeout
+  
+  # Rate limiting
+  requests_per_second: 10
+  burst_limit: 20
