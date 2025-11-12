@@ -280,6 +280,15 @@ class IPCClient:
                     return value
                 else:
                     return 0
+            
+            def to_dict(self):
+                """Convert to dictionary for reporting."""
+                return {
+                    'is_syncing': self.is_syncing,
+                    'current_block': self.current_block,
+                    'highest_block': self.highest_block,
+                    'blocks_behind': max(0, self.highest_block - self.current_block) if not self.is_syncing else 0
+                }
         
         if syncing_response.data is False:
             # Not syncing, fully synced
