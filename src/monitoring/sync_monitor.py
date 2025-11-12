@@ -7,13 +7,16 @@ import logging
 import time
 from typing import Dict, Any, Optional, Callable
 
+# Import core modules
+from core.ipc_client import IPCClient
+from storage.models import SyncStatus, DesyncEvent, NodeInfo, MonitoringState
+
 try:
-    from core.ipc_client import IPCClient
     from core.prometheus_client import PrometheusClient
     from storage.database import MetricsDatabase
-    from storage.models import SyncStatus, DesyncEvent, NodeInfo, MonitoringState
     from utils.config import Config
 except ImportError:
+<<<<<<< HEAD
     # Fallback for development
     class IPCClient:
         def __init__(self, ipc_path=None, timeout=30, http_rpc_url=None): pass
@@ -39,6 +42,9 @@ except ImportError:
                 error = "No IPC connection"
             return MockResponse()
     
+=======
+    # Fallback for development (only for non-critical modules)
+>>>>>>> 37f4320 (Second round)
     class PrometheusClient:
         def __init__(self, config): pass
         async def collect_metrics(self): return None
@@ -49,17 +55,8 @@ except ImportError:
         async def store_desync_event(self, id, data): pass
         async def close(self): pass
     
-    class SyncStatus:
-        def __init__(self, **kwargs): pass
-    
-    class DesyncEvent:
-        def __init__(self, **kwargs): pass
-    
-    class NodeInfo:
-        def __init__(self, **kwargs): pass
-    
-    class MonitoringState:
-        def __init__(self, **kwargs): pass
+    class Config:
+        pass
 
 
 class SyncMonitor:
