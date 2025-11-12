@@ -21,7 +21,7 @@ except ImportError:
 class IPCResponse:
     """IPC response wrapper."""
     success: bool
-    data: Any
+    data: Any = None
     error: Optional[str] = None
     method: Optional[str] = None
 

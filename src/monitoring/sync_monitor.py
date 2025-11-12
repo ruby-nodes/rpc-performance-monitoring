@@ -64,10 +64,24 @@ class SyncMonitor:
         self.logger = logging.getLogger('sync_monitor')
         
         # Components
-        ipc_path = config.get('ipc', {}).get('socket_path') or config.get('node', {}).get('ipc_path')
-        http_rpc_url = config.get('ipc', {}).get('http_rpc_url') or config.get('node', {}).get('rpc_url')
+        # Try to get IPC path from multiple sources in order of preference
+        ipc_path = (
+            config.get('node', {}).get('ipc_path') or  # Manual override
+            config.get('networks', {}).get('bsc', {}).get('ipc_path') or  # BSC network config
+            config.get('ipc', {}).get('socket_path')  # Global IPC config
+        )
+        
+        # Get HTTP RPC URL with fallbacks
+        http_rpc_url = (
+            config.get('node', {}).get('rpc_url') or  # Node config
+            config.get('networks', {}).get('bsc', {}).get('rpc_url') or  # BSC network config
+            config.get('ipc', {}).get('http_rpc_url') or  # IPC config fallback
+            "http://localhost:8545"  # Default
+        )
+        
         timeout = config.get('ipc', {}).get('connection_timeout_seconds', 30)
         
+        self.logger.info(f"Initializing IPC client - IPC: {ipc_path}, HTTP: {http_rpc_url}")
         self.ipc_client = IPCClient(ipc_path=ipc_path, timeout=timeout, http_rpc_url=http_rpc_url)
         self.prometheus_client = PrometheusClient(config)
         self.database = MetricsDatabase(config)
