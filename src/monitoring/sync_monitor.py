@@ -16,35 +16,7 @@ try:
     from storage.database import MetricsDatabase
     from utils.config import Config
 except ImportError:
-<<<<<<< HEAD
-    # Fallback for development
-    class IPCClient:
-        def __init__(self, ipc_path=None, timeout=30, http_rpc_url=None): pass
-        async def get_sync_status(self): return None
-        async def get_peer_count(self): return 0
-        async def get_latest_block(self): return 0
-        async def get_client_version(self): 
-            class MockResponse:
-                success = False
-                data = None
-                error = "No IPC connection"
-            return MockResponse()
-        async def get_syncing_status(self):
-            class MockResponse:
-                success = False
-                data = None
-                error = "No IPC connection"
-            return MockResponse()
-        async def get_block_number(self):
-            class MockResponse:
-                success = False
-                data = None
-                error = "No IPC connection"
-            return MockResponse()
-    
-=======
     # Fallback for development (only for non-critical modules)
->>>>>>> 37f4320 (Second round)
     class PrometheusClient:
         def __init__(self, config): pass
         async def collect_metrics(self): return None
