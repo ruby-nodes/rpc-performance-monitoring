@@ -211,9 +211,26 @@ class SyncMonitor:
         """Check current synchronization status."""
         try:
             # Get local node status
+            self.logger.info("Attempting to get sync status from IPC client...")
             sync_status = await self.ipc_client.get_sync_status()
+            
             if not sync_status:
                 self.logger.warning("Could not get sync status from local node")
+                # Debug: Try individual RPC calls to see what's failing
+                try:
+                    self.logger.info("Testing individual RPC calls for debugging...")
+                    version_response = await self.ipc_client.get_client_version()
+                    self.logger.info(f"Client version response: success={version_response.success}, data={version_response.data}, error={version_response.error}")
+                    
+                    syncing_response = await self.ipc_client.get_syncing_status()
+                    self.logger.info(f"Syncing response: success={syncing_response.success}, data={syncing_response.data}, error={syncing_response.error}")
+                    
+                    block_response = await self.ipc_client.get_block_number()
+                    self.logger.info(f"Block number response: success={block_response.success}, data={block_response.data}, error={block_response.error}")
+                    
+                except Exception as debug_e:
+                    self.logger.error(f"Debug RPC calls failed: {debug_e}")
+                
                 return
             
             self.monitoring_state.current_sync_status = sync_status
