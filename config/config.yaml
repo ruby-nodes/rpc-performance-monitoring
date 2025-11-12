@@ -8,7 +8,7 @@ node:
   prometheus_url: "http://localhost:9090"  # Node's Prometheus metrics endpoint
   
   # Default to HTTP RPC for development/testing
-  rpc_url: "http://localhost:8545"  # Default local node RPC endpoint
+  rpc_url: "https://bsc-dataseed.bnbchain.org/"  # Public BSC RPC endpoint
 
 # Network configurations (top-level)
 networks:
@@ -43,7 +43,7 @@ ipc:
   
   # Fallback to HTTP RPC if IPC not available
   use_http_fallback: true
-  http_rpc_url: "http://localhost:8545"
+  http_rpc_url: "https://bsc-dataseed.bnbchain.org/"
 
 monitoring:
   # Sync monitoring intervals

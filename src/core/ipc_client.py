@@ -246,8 +246,21 @@ class IPCClient:
         class SyncStatus:
             def __init__(self, is_syncing, current_block, highest_block):
                 self.is_syncing = is_syncing
-                self.current_block = current_block
-                self.highest_block = highest_block
+                # Convert hex strings to decimal integers
+                self.current_block = self._hex_to_int(current_block)
+                self.highest_block = self._hex_to_int(highest_block)
+                
+            def _hex_to_int(self, value):
+                """Convert hex string to integer, handle various input types."""
+                if isinstance(value, str) and value.startswith('0x'):
+                    try:
+                        return int(value, 16)
+                    except ValueError:
+                        return 0
+                elif isinstance(value, int):
+                    return value
+                else:
+                    return 0
         
         if syncing_response.data is False:
             # Not syncing, fully synced
@@ -264,7 +277,12 @@ class IPCClient:
     async def get_latest_block(self) -> int:
         """Get latest block number."""
         response = await self.get_block_number()
-        return response.data if response.success else 0
+        if response.success and response.data:
+            try:
+                return int(response.data, 16)  # Convert hex string to int
+            except (ValueError, TypeError):
+                return 0
+        return 0
     
     async def is_connected(self) -> bool:
         """Check if IPC connection is working."""
