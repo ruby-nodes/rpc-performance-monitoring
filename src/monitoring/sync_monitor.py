@@ -20,6 +20,12 @@ except ImportError:
         async def get_sync_status(self): return None
         async def get_peer_count(self): return 0
         async def get_latest_block(self): return 0
+        async def get_client_version(self): 
+            class MockResponse:
+                success = False
+                error = "No IPC connection"
+                result = None
+            return MockResponse()
     
     class PrometheusClient:
         def __init__(self, config): pass
@@ -29,6 +35,7 @@ except ImportError:
         def __init__(self, config): pass
         async def initialize(self): pass
         async def store_desync_event(self, id, data): pass
+        async def close(self): pass
     
     class SyncStatus:
         def __init__(self, **kwargs): pass
@@ -57,7 +64,11 @@ class SyncMonitor:
         self.logger = logging.getLogger('sync_monitor')
         
         # Components
-        self.ipc_client = IPCClient(config)
+        ipc_path = config.get('ipc', {}).get('socket_path') or config.get('node', {}).get('ipc_path')
+        http_rpc_url = config.get('ipc', {}).get('http_rpc_url') or config.get('node', {}).get('rpc_url')
+        timeout = config.get('ipc', {}).get('connection_timeout_seconds', 30)
+        
+        self.ipc_client = IPCClient(ipc_path=ipc_path, timeout=timeout, http_rpc_url=http_rpc_url)
         self.prometheus_client = PrometheusClient(config)
         self.database = MetricsDatabase(config)
         
@@ -165,6 +176,9 @@ class SyncMonitor:
                 await self._check_sync_status()
                 await asyncio.sleep(self.check_interval)
                 
+        except asyncio.CancelledError:
+            self.logger.info("Sync monitoring cancelled")
+            raise
         except Exception as e:
             self.logger.error(f"Monitoring loop failed: {e}")
             raise

@@ -54,14 +54,38 @@ class NodeDetector:
     
     async def _auto_detect_node(self) -> NodeInfo:
         """Auto-detect node from common IPC paths."""
-        # Common IPC socket locations
+                # Try common IPC paths
         common_paths = [
-            "/var/lib/bsc/geth.ipc",      # BSC geth
-            "/tmp/reth.ipc",              # Base reth
-            "/var/lib/ethereum/geth.ipc", # Ethereum geth
-            "./geth.ipc",                 # Local geth
-            "./reth.ipc"                  # Local reth
+            "/var/lib/bsc/geth.ipc",  # BSC geth
+            "/tmp/reth.ipc",          # Base reth
+            "/tmp/geth.ipc",          # Standard geth
+            "~/.ethereum/geth.ipc"    # Home directory geth
         ]
+        
+        http_rpc_url = self.config.get('node', {}).get('rpc_url', 'http://localhost:8545')
+        
+        for ipc_path in common_paths:
+            if Path(ipc_path).exists():
+                self.logger.info(f"Found IPC socket at: {ipc_path}")
+                
+                try:
+                    node_info = await self._probe_node(ipc_path, http_rpc_url)
+                    self.logger.info(f"Successfully detected node: {node_info.client_type} v{node_info.version}")
+                    return node_info
+                except Exception as e:
+                    self.logger.debug(f"Failed to probe {ipc_path}: {e}")
+                    continue
+        
+        # If no IPC socket found, try HTTP RPC
+        self.logger.info(f"No IPC socket found, trying HTTP RPC: {http_rpc_url}")
+        try:
+            node_info = await self._probe_node(None, http_rpc_url)
+            self.logger.info(f"Successfully connected via HTTP: {node_info.client_type} v{node_info.version}")
+            return node_info
+        except Exception as e:
+            self.logger.debug(f"Failed to connect via HTTP: {e}")
+        
+        raise RuntimeError("No accessible node found. Please check IPC socket availability or HTTP RPC endpoint.")
         
         # Add manually configured path if specified
         if self.node_config.get('ipc_path'):
@@ -83,26 +107,31 @@ class NodeDetector:
     
     async def _manual_node_config(self) -> NodeInfo:
         """Use manual node configuration."""
-        ipc_path = self.node_config['ipc_path']
+        ipc_path = self.node_config.get('ipc_path')
+        http_rpc_url = self.node_config.get('rpc_url') or self.config.get('node', {}).get('rpc_url', 'http://localhost:8545')
+        
         if not ipc_path:
-            raise RuntimeError("Manual configuration requires ipc_path to be set")
+            self.logger.info("No IPC path configured, using HTTP RPC")
+            return await self._probe_node(None, http_rpc_url)
         
         if not Path(ipc_path).exists():
-            raise RuntimeError(f"IPC socket not found at: {ipc_path}")
+            self.logger.warning(f"IPC socket not found at: {ipc_path}, trying HTTP RPC")
+            return await self._probe_node(None, http_rpc_url)
         
-        return await self._probe_node(ipc_path)
+        return await self._probe_node(ipc_path, http_rpc_url)
     
-    async def _probe_node(self, ipc_path: str) -> NodeInfo:
+    async def _probe_node(self, ipc_path: str, http_rpc_url: str = None) -> NodeInfo:
         """
         Probe node via IPC to determine type and network.
         
         Args:
             ipc_path: Path to IPC socket
+            http_rpc_url: HTTP RPC URL fallback
             
         Returns:
             NodeInfo with node details
         """
-        ipc_client = IPCClient(ipc_path)
+        ipc_client = IPCClient(ipc_path=ipc_path, http_rpc_url=http_rpc_url)
         
         # Get client version
         version_response = await ipc_client.get_client_version()

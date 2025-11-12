@@ -139,16 +139,15 @@ class NodeMonitor:
                 asyncio.create_task(self._status_reporter())
             ]
             
-            # Wait for all tasks to complete
+            # Wait for all tasks to complete (or cancellation)
             await asyncio.gather(*self.monitoring_tasks, return_exceptions=True)
             
-        except KeyboardInterrupt:
-            self.logger.info("Shutdown requested by user")
+        except asyncio.CancelledError:
+            self.logger.info("Monitoring cancelled")
+            raise
         except Exception as e:
             self.logger.error(f"Monitoring failed: {e}")
             raise
-        finally:
-            await self.shutdown()
     
     async def _status_reporter(self):
         """Periodic status reporting."""
@@ -167,6 +166,8 @@ class NodeMonitor:
                 self.logger.info(f"Status: Active desyncs: {len(sync_status.get('active_desyncs', []))}, "
                                f"Metrics collected: {metrics_stats.get('collection_stats', {}).get('metrics_collected', 0)}")
                 
+            except asyncio.CancelledError:
+                break
             except Exception as e:
                 self.logger.error(f"Status reporting failed: {e}")
     
@@ -191,24 +192,47 @@ class NodeMonitor:
             await self.database.close()
         
         self.logger.info("Node monitor shutdown complete")
-    
-    def handle_signal(self, sig, frame):
-        """Handle shutdown signals."""
-        self.logger.info(f"Received signal {sig}, shutting down...")
-        self.is_running = False
 
 
 async def main():
     """Main entry point."""
     monitor = NodeMonitor()
     
-    # Setup signal handlers
-    signal.signal(signal.SIGINT, monitor.handle_signal)
-    signal.signal(signal.SIGTERM, monitor.handle_signal)
-    
-    # Initialize and start monitoring
+    # Initialize monitoring
     await monitor.initialize()
-    await monitor.start_monitoring()
+    
+    # Create a shutdown event
+    shutdown_event = asyncio.Event()
+    
+    def signal_handler(sig, frame):
+        """Handle shutdown signals."""
+        monitor.logger.info(f"Received signal {sig}, shutting down...")
+        shutdown_event.set()
+    
+    # Setup signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    try:
+        # Start monitoring in background task
+        monitoring_task = asyncio.create_task(monitor.start_monitoring())
+        
+        # Wait for shutdown signal
+        await shutdown_event.wait()
+        
+        # Cancel monitoring task
+        monitoring_task.cancel()
+        try:
+            await monitoring_task
+        except asyncio.CancelledError:
+            pass
+        
+        # Shutdown monitor
+        await monitor.shutdown()
+        
+    except Exception as e:
+        monitor.logger.error(f"Error during monitoring: {e}")
+        raise
 
 
 if __name__ == "__main__":

@@ -26,12 +26,34 @@ except ImportError:
         def __init__(self, config): pass
         async def store_metrics(self, snapshot): pass
         async def store_anomaly(self, anomaly): pass
+        async def close(self): pass
     
     class MetricAnomaly:
         def __init__(self, **kwargs): pass
     
     class MonitoringStats:
-        def __init__(self): pass
+        def __init__(self):
+            self.metrics_collected = 0
+            self.desyncs_detected = 0
+            self.anomalies_detected = 0
+            self.ipc_calls_made = 0
+            self.ipc_call_failures = 0
+            self.prometheus_requests = 0
+            self.prometheus_request_failures = 0
+            self.database_writes = 0
+            self.database_write_failures = 0
+            self.start_time = __import__('time').time()
+        
+        def to_dict(self):
+            return {
+                'metrics_collected': self.metrics_collected,
+                'desyncs_detected': self.desyncs_detected,
+                'anomalies_detected': self.anomalies_detected,
+                'prometheus_requests': self.prometheus_requests,
+                'prometheus_request_failures': self.prometheus_request_failures,
+                'database_writes': self.database_writes,
+                'database_write_failures': self.database_write_failures
+            }
 
 
 class MetricsCollector:
@@ -94,6 +116,9 @@ class MetricsCollector:
                 await self._collect_and_analyze()
                 await asyncio.sleep(self.collection_interval)
                 
+        except asyncio.CancelledError:
+            self.logger.info("Metrics collection cancelled")
+            raise
         except Exception as e:
             self.logger.error(f"Metrics collection failed: {e}")
             raise

@@ -24,6 +24,7 @@ except ImportError:
     
     class MetricsDatabase:
         def __init__(self, config): pass
+        async def close(self): pass
 
 
 class DesyncLogger:

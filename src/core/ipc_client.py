@@ -1,11 +1,12 @@
 """
-Universal IPC client for both geth and reth nodes.
+Universal IPC client for both geth and reth nodes with HTTP RPC fallback.
 """
 
 import json
 import socket
 import asyncio
 import logging
+import aiohttp
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
@@ -21,24 +22,32 @@ class IPCResponse:
 
 
 class IPCClient:
-    """Universal IPC client supporting both geth and reth."""
+    """Universal IPC client supporting both geth and reth with HTTP RPC fallback."""
     
-    def __init__(self, ipc_path: str, timeout: int = 30):
+    def __init__(self, ipc_path: str = None, timeout: int = 30, http_rpc_url: str = None):
         """
         Initialize IPC client.
         
         Args:
-            ipc_path: Path to IPC socket
+            ipc_path: Path to IPC socket (optional)
             timeout: Request timeout in seconds
+            http_rpc_url: HTTP RPC URL fallback (optional)
         """
         self.ipc_path = ipc_path
+        self.http_rpc_url = http_rpc_url or "http://localhost:8545"
         self.timeout = timeout
         self.logger = logging.getLogger('ipc_client')
         self._request_id = 0
+        self._use_http = False
+        
+        # Auto-detect connection method
+        if not ipc_path or not Path(ipc_path).exists():
+            self.logger.info(f"IPC socket not available, using HTTP RPC: {self.http_rpc_url}")
+            self._use_http = True
         
     async def call_method(self, method: str, params: List[Any] = None) -> IPCResponse:
         """
-        Call JSON-RPC method via IPC.
+        Call JSON-RPC method via IPC or HTTP.
         
         Args:
             method: RPC method name
@@ -59,6 +68,67 @@ class IPCClient:
             "id": self._request_id
         }
         
+        try:
+            if self._use_http:
+                return await self._call_http(request, method)
+            else:
+                return await self._call_ipc(request, method)
+                
+        except Exception as e:
+            self.logger.error(f"Failed to call {method}: {e}")
+            return IPCResponse(
+                success=False,
+                error=str(e),
+                method=method
+            )
+    
+    async def _call_http(self, request: dict, method: str) -> IPCResponse:
+        """Call method via HTTP RPC."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.http_rpc_url,
+                    json=request,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                    headers={"Content-Type": "application/json"}
+                ) as response:
+                    if response.status != 200:
+                        return IPCResponse(
+                            success=False,
+                            error=f"HTTP {response.status}: {await response.text()}",
+                            method=method
+                        )
+                    
+                    response_data = await response.json()
+                    
+                    if "error" in response_data:
+                        return IPCResponse(
+                            success=False,
+                            error=response_data["error"].get("message", "Unknown RPC error"),
+                            method=method
+                        )
+                    
+                    return IPCResponse(
+                        success=True,
+                        data=response_data.get("result"),
+                        method=method
+                    )
+                    
+        except asyncio.TimeoutError:
+            return IPCResponse(
+                success=False,
+                error=f"HTTP request timeout after {self.timeout}s",
+                method=method
+            )
+        except Exception as e:
+            return IPCResponse(
+                success=False,
+                error=f"HTTP request failed: {e}",
+                method=method
+            )
+    
+    async def _call_ipc(self, request: dict, method: str) -> IPCResponse:
+        """Call method via IPC socket."""
         try:
             # Check if IPC socket exists
             if not Path(self.ipc_path).exists():

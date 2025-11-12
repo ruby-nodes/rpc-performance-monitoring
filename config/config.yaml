@@ -3,9 +3,12 @@ node:
   auto_detect: true
   
   # Manual override if needed
-  ipc_path: null  # Will auto-detect: /var/lib/bsc/geth.ipc or /tmp/reth.ipc
+  ipc_path: null  # Will auto-detect or use HTTP RPC
   client_type: "auto"  # geth, reth, or auto
   prometheus_url: "http://localhost:9090"  # Node's Prometheus metrics endpoint
+  
+  # Default to HTTP RPC for development/testing
+  rpc_url: "http://localhost:8545"  # Default local node RPC endpoint
 
 # Network configurations (top-level)
 networks:
@@ -13,6 +16,7 @@ networks:
     name: "BSC Mainnet"
     chain_id: 56
     ipc_path: "/var/lib/bsc/geth.ipc"
+    rpc_url: "http://localhost:8545"  # Local BSC node
     consensus_rpc_url: "https://bsc-dataseed.bnbchain.org/"
     client_type: "geth"
     
@@ -20,13 +24,26 @@ networks:
     name: "Base Mainnet" 
     chain_id: 8453
     ipc_path: "/tmp/reth.ipc"
+    rpc_url: "http://localhost:8545"  # Local Base node
     consensus_rpc_url: "https://mainnet.base.org"
     client_type: "reth"
+  
+  ethereum:
+    name: "Ethereum Mainnet"
+    chain_id: 1
+    ipc_path: "/tmp/geth.ipc"
+    rpc_url: "http://localhost:8545"  # Local Ethereum node
+    consensus_rpc_url: "https://ethereum-rpc.publicnode.com"
+    client_type: "geth"
 
 # IPC configuration
 ipc:
-  socket_path: "/var/lib/bsc/geth.ipc"  # Default path
+  socket_path: null  # Will auto-detect or use HTTP RPC fallback
   connection_timeout_seconds: 10
+  
+  # Fallback to HTTP RPC if IPC not available
+  use_http_fallback: true
+  http_rpc_url: "http://localhost:8545"
 
 monitoring:
   # Sync monitoring intervals
