@@ -16,7 +16,7 @@ try:
 except ImportError:
     # Fallback for development
     class IPCClient:
-        def __init__(self, config): pass
+        def __init__(self, ipc_path=None, timeout=30, http_rpc_url=None): pass
         async def get_sync_status(self): return None
         async def get_peer_count(self): return 0
         async def get_latest_block(self): return 0

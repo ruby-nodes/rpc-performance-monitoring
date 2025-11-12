@@ -6,10 +6,15 @@ import json
 import socket
 import asyncio
 import logging
-import aiohttp
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
+
+try:
+    import aiohttp
+    HAS_AIOHTTP = True
+except ImportError:
+    HAS_AIOHTTP = False
 
 
 @dataclass
@@ -42,8 +47,15 @@ class IPCClient:
         
         # Auto-detect connection method
         if not ipc_path or not Path(ipc_path).exists():
-            self.logger.info(f"IPC socket not available, using HTTP RPC: {self.http_rpc_url}")
-            self._use_http = True
+            if HAS_AIOHTTP:
+                self.logger.info(f"IPC socket not available, using HTTP RPC: {self.http_rpc_url}")
+                self._use_http = True
+            else:
+                self.logger.warning("IPC socket not available and aiohttp not installed - limited functionality")
+                self._use_http = False
+        else:
+            self.logger.info(f"Using IPC socket: {self.ipc_path}")
+            self._use_http = False
         
     async def call_method(self, method: str, params: List[Any] = None) -> IPCResponse:
         """
@@ -84,6 +96,13 @@ class IPCClient:
     
     async def _call_http(self, request: dict, method: str) -> IPCResponse:
         """Call method via HTTP RPC."""
+        if not HAS_AIOHTTP:
+            return IPCResponse(
+                success=False,
+                error="aiohttp not available - cannot use HTTP RPC",
+                method=method
+            )
+            
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
